@@ -40,6 +40,8 @@ jobs:
                any::tidyverse
                any::lubridate
                any::flexdashboard
+               any::rprojroot
+               any::scales
                
       - name: Render document
         uses: quarto-dev/quarto-actions/render@v2

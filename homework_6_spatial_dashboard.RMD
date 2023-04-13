@@ -1,0 +1,184 @@
+---
+title: "homework_6_spatial_dashboard"
+author: "Edward Zhai"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include = FALSE, echo = FALSE}
+#Load the good stuff
+library(gt)
+library(paletteer)
+library(ggridges)
+library(plotly)
+library(gtExtras)
+library(sf)
+library(ggmap)
+library(tidycensus)
+library(leaflet)
+library(osmdata)
+library(tigris)
+library(ggthemes)
+library(tidyverse)
+library(lubridate)
+library(plotly)
+library(flexdashboard)
+
+#Working directory for .RMD
+knitr::opts_knit$set(include = FALSE,
+                     root.dir = rprojroot::find_rstudio_root_file())
+
+#Controlling figure output in markdown
+knitr::opts_chunk$set(
+#  fig.height =   
+  fig.width = 6,
+#  fig.asp = .5,
+  out.width = "90%",
+#  out.height = 
+ fig.align  = "center",
+  cache = FALSE,
+  eval  = TRUE,
+  echo  = FALSE,
+  warning = FALSE
+)
+
+#My Colours (from viridis)
+my_purple <- "#440154FF"
+my_yellow <- "#FDE725FF"
+
+#Set Theme for ggplot2
+theme_set(theme_bw() + theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom"))
+
+#Set Scientific notation output and decimal places for knitr
+options(scipen = 999)
+options(digits = 4)
+options(dplyr.summarise.inform = FALSE)
+
+CENSUS_API_KEY <- Sys.getenv("CENSUS_API_KEY")
+```
+
+```{r, message = FALSE, include = TRUE, echo = FALSE}
+# 1.3
+#Save the cache so you don't need to call the same API request over and over
+options(tigris_use_cache = TRUE)
+
+#Call the library
+library(ggsflabel)
+
+#Call the ACS API, returns a sf object
+mn_income.df <- get_acs(
+  geography = "tract",
+  variables = "B19061_001", #Code for Aggregate Earnings IN THE PAST 12 MONTHS (IN 2020 INFLATION-ADJUSTED DOLLARS) for households
+  state     = "MN",
+  county    = "Hennepin",
+  year      = 2020,
+  geometry  = TRUE,
+  cb        = FALSE
+)
+
+#Plot normally
+income.gg <- ggplot() + 
+  geom_sf(data = mn_income.df, aes(fill = estimate)) + 
+  labs(title = "MN Hennepin 2020 ACS Aggregate Household Earnings") + 
+  theme_void() + 
+  scale_fill_viridis_c("Aggregate Earnings Past 12 mo",labels = scales::dollar)
+
+#Add a text label to mn_income.df
+mn_income_plotly.df <- mn_income.df %>%
+  mutate(
+    tract      = str_split(NAME, ",") %>%
+                 map_chr(1) %>%
+                 str_remove("Census Tract "),
+    text_label = str_c(
+                  "Tract: ",
+                  tract,
+                  "\nAggregate Earnings Past 12 mo: ",
+                  scales::dollar(estimate)
+                 )
+  )
+
+#Generate the ggplot
+income.gg <- ggplot() + 
+  geom_sf(data = mn_income_plotly.df, 
+          aes(fill = estimate, text = text_label),
+          colour = "black", size = 0.1) + 
+  labs(title = "MN Hennepin 2020 ACS Aggregate Household Earnings") + 
+  scale_fill_viridis_c("Aggregate Earnings", labels = scales::dollar) +
+  theme_map() +
+  theme(
+    plot.title   = element_text(size  = 16,
+                                hjust = 0.5),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.position = "right"
+  )
+
+
+#Get the bounding box and county outline
+mn.box           <- osmdata::getbb("minnesota")
+hennepin.box     <- osmdata::getbb("hennepin")
+hennepin.outline <- osmdata::getbb("hennepin", format_out = "polygon")[[1]] %>%
+  as_tibble() %>%
+  rename(longitude = V1, latitude = V2)
+
+
+#Get map from ggmap
+#Get the base map (foundational layer)
+mn_base.map <- get_map(
+                location = hennepin.box,
+                source   = "stamen",
+                maptype  = "terrain",
+                crop = TRUE
+               )
+
+#Create the base map
+hennepin_base.gg <- ggmap(mn_base.map) +
+  geom_polygon(data = hennepin.outline, aes(x = longitude, y = latitude), colour = "black", size = 1.6, alpha = 0.1) +
+  theme_map() +
+  theme(
+    plot.title   = element_text(size  = 16,
+                                hjust = 0.5),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.position = "right"
+  )
+    
+#First, need to make sure the coordinate systems between the ggmap and geom_sf match
+coord_ggmap <- st_crs(hennepin_base.gg) #NA
+coord_sf    <- st_crs(mn_income_plotly.df) #NAD83
+
+#Overlay thge sf info from tidycensus ACS income estimates
+mn_income.ggmap <- hennepin_base.gg +  
+  geom_sf(data = mn_income_plotly.df, 
+          aes(fill = estimate, text = text_label),
+          colour = "black", size = 0.1,
+          inherit.aes = FALSE) + 
+  labs(title = "MN Hennepin 2020 ACS Aggregate Earnings Past 12 mo (in 2020 Inflation Adj. $s) For Households") + 
+  scale_fill_viridis_c("Aggregate Earnings", labels = scales::dollar) +
+  theme_map() +
+  theme(
+    plot.title   = element_text(size  = 16,
+                                hjust = 0.5),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.position = "right"
+  )
+
+plot1.3<-ggplotly(mn_income.ggmap,
+         tooltip = "text",
+         height  = 600,
+         width   = 1200) %>%
+    style(hoveron = "fills")
+```
+
+
+Column {data-width=1200}
+-----------------------------------------------------------------------
+
+### 1.3
+
+```{r}
+plot1.3
+```

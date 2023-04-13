@@ -23,10 +23,6 @@ library(lubridate)
 library(plotly)
 library(flexdashboard)
 
-#Working directory for .RMD
-knitr::opts_knit$set(include = FALSE,
-                     root.dir = rprojroot::find_rstudio_root_file())
-
 #Controlling figure output in markdown
 knitr::opts_chunk$set(
 #  fig.height =   

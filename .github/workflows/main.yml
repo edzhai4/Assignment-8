@@ -58,4 +58,4 @@ jobs:
         run: |
           git add .
           git commit -m "Updated report"
-          git push origin m
+          git push origin main

@@ -1,9 +1,4 @@
 # homework_6_spatial_dashboard
----
-title: "homework_6_spatial_dashboard"
-author: "Edward Zhai"
-output: html
----
 
 ```{r setup, include = FALSE, echo = FALSE}
 #Load the good stuff

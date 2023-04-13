@@ -57,5 +57,5 @@ jobs:
       - name: Commit
         run: |
           git add .
-          git commit -m "Updated report"
-          git push origin m
+          git commit -main "Updated report"
+          git push origin main
